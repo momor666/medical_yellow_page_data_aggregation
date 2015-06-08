@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "masterminds/html5",
-            "version": "2.1.1",
+            "version": "2.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Masterminds/html5-php.git",
-                "reference": "28490e9e0caea10f5ca09ab68f88d1f26e80ff9d"
+                "reference": "8f782e0f01a6e33a319bdc8f6de9cfd6569979a4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Masterminds/html5-php/zipball/28490e9e0caea10f5ca09ab68f88d1f26e80ff9d",
-                "reference": "28490e9e0caea10f5ca09ab68f88d1f26e80ff9d",
+                "url": "https://api.github.com/repos/Masterminds/html5-php/zipball/8f782e0f01a6e33a319bdc8f6de9cfd6569979a4",
+                "reference": "8f782e0f01a6e33a319bdc8f6de9cfd6569979a4",
                 "shasum": ""
             },
             "require": {
@@ -69,7 +69,7 @@
                 "serializer",
                 "xml"
             ],
-            "time": "2015-03-23 22:56:43"
+            "time": "2015-06-07 08:43:18"
         },
         {
             "name": "querypath/querypath",

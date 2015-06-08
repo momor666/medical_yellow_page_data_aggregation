@@ -16,3 +16,4 @@ protected/data/*.db
 themes/classic/views/
 
 vendor
+composer.lock
