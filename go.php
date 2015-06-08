@@ -36,13 +36,11 @@ $getCompany = function ( $url, &$result ) use ( $BASEURL ) {
 
 
 $result = array();
-$file   = fopen('output2.csv', 'w');
-for ( $i = 1;$i <= 98;$i ++ ) {
+for ( $i = 1;$i <= 2;$i ++ ) {
     $getCompany($BASEURLPOSTCODE . 'b' . $i, $result);
 }
 
-fputcsv($file, ['Company Name', 'Street Address', 'Locality', 'Region', 'Url']);
+echo implode(','.['Company Name', 'Street Address', 'Locality', 'Region', 'Url']);
 foreach ( $result as $fields ) {
-    fputcsv($file, $fields);
+    print_r($fields);
 }
-fclose($file);
