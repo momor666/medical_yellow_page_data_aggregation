@@ -8,13 +8,14 @@ $DRUG_CLASSES = [];
 
 //INIT
 $DRUG_CLASSES = $db->query("SELECT `name` from drug_class")->fetch_all(MYSQLI_NUM);
+$DRUG_SETS = $db->query("SELECT `target_id` from `drug`")->fetch_all(MYSQLI_NUM);
 //$DRUG_CLASSES[1028][0] = Xanthine Oxidase Inhibitors
 //INIT//
 
 require_once('vendor/autoload.php');
 use Masterminds\HTML5;
 
-$BASEURL = 'http://dailymed.nlm.nih.gov/dailymed/search.cfm?searchdb=class&pagesize=200&query=';//5-alpha%20Reductase%20Inhibitor
+$BASEURL = 'http://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=';//33d066a9-34ff-4a1a-b38b-d10983df3300
 
 $getDrugSet = function ( $url, &$result ) use ( $BASEURL, $db ) {
     /*
@@ -72,12 +73,11 @@ $getDrugSet = function ( $url, &$result ) use ( $BASEURL, $db ) {
 
 
 $result   = array();
-$dclasses = $DRUG_CLASSES;
-foreach ( $dclasses as $dclass ) {
-    for ($ii = 1; $ii < 20; $ii++) {
-        $page = $BASEURL . rawurlencode($dclass[0]) . "&page=$ii";
+$dsets = $DRUG_SETS;
+$dsets = array_slice($dsets, 0, 2);
+foreach ( $dsets as $drug_set ) {
+        $page = $BASEURL . rawurlencode($drug_set[0]);
         $getDrugSet($page, $result);
-    }
 }
 
 $db->close();
