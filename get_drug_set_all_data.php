@@ -1,83 +1,86 @@
 <?php
 
-$db = new mysqli('localhost', 'medyp', 'mTrapok)1', 'medyp');
+$db = new mysqli( 'localhost','medyp','mTrapok)1','medyp' );
 if ( $db->connect_errno ) {
-    echo "Failed to connect to MySQL: (" . $db->connect_errno . ") " . $db->connect_error;
+	echo "Failed to connect to MySQL: (" . $db->connect_errno . ") " . $db->connect_error;
 }
-$DRUG_CLASSES = [];
+$DRUG_CLASSES = [ ];
 
 //INIT
-$DRUG_CLASSES = $db->query("SELECT `name` from drug_class")->fetch_all(MYSQLI_NUM);
-$DRUG_SETS = $db->query("SELECT `target_id` from `drug`")->fetch_all(MYSQLI_NUM);
+$DRUG_CLASSES = $db->query( "SELECT `name` from drug_class" )->fetch_all( MYSQLI_NUM );
+$DRUG_SETS    = $db->query( "SELECT `target_id` from `drug`" )->fetch_all( MYSQLI_NUM );
 //$DRUG_CLASSES[1028][0] = Xanthine Oxidase Inhibitors
 //INIT//
 
-require_once('vendor/autoload.php');
+require_once( 'vendor/autoload.php' );
 use Masterminds\HTML5;
 
 $BASEURL = 'http://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=';//33d066a9-34ff-4a1a-b38b-d10983df3300
 
-$getDrugSet = function ( $url, &$result ) use ( $BASEURL, $db ) {
-    /*
-     * @var string $BASEURL
-     * @var mysqli object $db
-     */
-    $dom           = (new HTML5())->loadHTML(file_get_contents($url));
-    $drugClassDivs = qp($dom, 'article.row');
-    foreach ( $drugClassDivs as $drugClassDiv ) {
-        $s     = qp($drugClassDiv)->find('div.results-info > h2 > a')->text();//<a href="search.cfm?query=5-alpha Reductase Inhibitor&amp;searchdb=class" id="anch_87">        5-alpha Reductase Inhibitor [EPC]                                    </a>
-        $s     = preg_replace("/\t|\n/", "", trim($s));
-        $regex = '/([^a-z\(]+)(\([a-zA-Z\s]+\))?(.*)/';
-        preg_match_all($regex, $s, $matches);
-        if ( count($matches) < 3 ) {
-            continue;
-        }
+$getDrugSet = function ( $url,$target_id ) use ( $BASEURL,$db ) {
+	/*
+	 * @var string $BASEURL
+	 * @var mysqli object $db
+	 */
+	$SITEROOT = 'http://dailymed.nlm.nih.gov/';
+	$dom      = ( new HTML5() )->loadHTML( file_get_contents( $url ) );
+	//we need category, highlight_prescribe, indications_usage, principal_disp_panel, drug_interations, image1, image2
+	$contentDiv = qp( $dom,'div.container' );
+	/*
+	 * $('#category').text()
+	 * $('#Highlights').text()
+	 * $($('a:contains("1 INDICATIONS & USAGE")')[1]).next().next('div').text()
+	 * $($('a:contains("PACKAGE LABEL.PRINCIPAL DISPLAY PANEL")')[0]).next().next('div').html()
+	 * $($('a[data-photo-type]')[0]).attr('href')
+	 * $($('a[data-photo-type]')[1]).attr('href')
+	 */
 
-        $name           = strtolower(trim(strval($matches[1][0])));
-        $medicationName = trim(substr(strval($matches[2][0]), 1, strval($matches[2][0]) - 2));
-        $packagingTypes = preg_replace("/,\s/", ",", strtolower(trim(strval($matches[3][0]))));
-        $fullname       = $s;
+	$category   = qp( $contentDiv )->find( '#category' )->text();
+	$highlight  = qp( $contentDiv )->find( '#Highlights' )->text();
+	$temp       = qp( $contentDiv )->find( 'a:contains("1 INDICATIONS & USAGE")' )->toArray();
+	$indi_usage = "";
+	if ( is_array( $temp ) && ( count( $temp ) > 0 ) ) {
+		$indi_usage = qp( $temp[1] )->next( 'div' )->text();
+	}
+	$temp            = qp( $contentDiv )->find( 'a:contains("PACKAGE LABEL.PRINCIPAL DISPLAY PANEL")' )->toArray();
+	$prin_disp_panel = "";
+	if ( is_array( $temp ) ) {
+		$prin_disp_panel = qp( $temp[0] )->next( 'div' )->html();
+	}
+	$temp      = qp( $contentDiv )->find( 'a:contains("7 DRUG INTERACTIONS")' )->toArray();
+	$drug_inte = "";
+	if ( is_array( $temp ) && ( count( $temp ) > 0 ) ) {
+		$drug_inte = qp( $temp[1] )->next( 'div' )->text();
+	}
+	$temp   = qp( $contentDiv )->find( 'a[data-photo-type]' )->toArray();
+	$image1 = "";
+	if ( is_array( $temp ) ) {
+		$image1 = $SITEROOT . 'dailymed/' . qp( $temp[0] )->attr( 'href' );
+	}
+	$image2 = "";
+	if ( count( $temp ) > 0 ) {
+		$image2 = qp( $temp[1] )->attr( 'href' );
+	}
 
-        $targetId = qp($drugClassDiv)->find('div.results-info > h2 > a')->attr('href');//<a href="/dailymed/drugInfo.cfm?setid=278e7dd6-7f56-479c-87d1-5a6f1a596010">
-        try {
-            $targetId = array_pop(explode("=", $targetId));
-        } catch ( Exception $e ) {
-            echo $e;
-            continue;
-        }
-        $ndcCodes = trim(qp($drugClassDiv)->find('span.ndc-codes')->text());
-        $ndcCodes = preg_replace("/\s|\t|\n|\r/", "", $ndcCodes);
+	$stmt = $db->prepare( 'UPDATE `medyp`.`drug` set `category` = ?, `highlight_prescribe` = ?, `indications_usage` = ?, `principal_display_panel` = ?, `drug_interactions` = ?, `image_1` = ?, `image_2` = ? WHERE `target_id` =  ?' );
+	array_map( function ( &$v ) {
+		$v = trim($v);
+		$v = preg_replace( '/\n\s*\n/',"\n",$v );
+		$v = preg_replace( '/^[^[:alnum:]]*/','',$v );
+	},
+		array( &$category,&$highlight,&$indi_usage,&$prin_disp_panel,&$drug_inte,&$image1,&$image2,&$target_id ) );
+	$stmt->bind_param( "ssssssss",$category,$highlight,$indi_usage,$prin_disp_panel,$drug_inte,$image1,$image2,$target_id );
+	$stmt->execute();
 
-        $packager = trim(qp($drugClassDiv)->find('li:contains("Packager:") > span')->text());
-
-        $photos   = qp($drugClassDiv)->find('img[alt="Package Photo"]');
-        $image[0] = "";
-        $image[1] = "";
-        $i        = 0;
-        foreach ( $photos as $photo ) {
-            if ( qp($photo)->attr('src') !== "/dailymed/images/drugimage-notavailable.gif" ) {
-                $image[$i] = qp($photo)->attr('src');
-            }
-            $i ++;
-        }
-
-        $stmt = $db->prepare('REPLACE INTO `drug`(`name`, `medication_name`, `packaging_types`, `full_name`, `target_id`, `ndc_codes`, `packager`) VALUES (?,?,?,?,?,?,?)');
-
-        $stmt->bind_param("sssssss", $name, $medicationName, $packagingTypes, $fullname, $targetId, $ndcCodes,
-                          $packager);
-        $stmt->execute();
-    }
-
-    return;
+	return;
 };
 
 
-$result   = array();
-$dsets = $DRUG_SETS;
-$dsets = array_slice($dsets, 0, 2);
+$dsets  = $DRUG_SETS;
+$dsets  = array_slice( $dsets,0,1 );
 foreach ( $dsets as $drug_set ) {
-        $page = $BASEURL . rawurlencode($drug_set[0]);
-        $getDrugSet($page, $result);
+	$page = $BASEURL . rawurlencode( $drug_set[0] );
+	$getDrugSet( $page,$drug_set[0] );
 }
 
 $db->close();
